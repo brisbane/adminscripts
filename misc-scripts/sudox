@@ -1,0 +1,15 @@
+#!/bin/bash
+if [[ $1 == '-u' ]]; then
+ user=$2
+else
+ user=root
+fi
+DISP=:`echo $DISPLAY | cut -f 2 -d :` 
+tmpfile=$(mktemp /tmp/.xauth${USER}XXXXX.tmp)
+chmod 600 $tmpfile
+xauth extract ${tmpfile} $DISP
+
+export XAUTHORITY=$(mktemp -u "/tmp/.xauth${user}XXXXX")
+cat $tmpfile  |  sudo -u "$user" sh -c "touch $XAUTHORITY && chmod 600 $XAUTHORITY && cat > $XAUTHORITY"
+rm -f $tmpfile
+XAUTHORITY=$XAUTHORITY sudo $@

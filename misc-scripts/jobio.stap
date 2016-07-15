@@ -1,0 +1,192 @@
+#! /usr/bin/env stap
+# traceio.stp
+# Copyright (C) 2007 Red Hat, Inc., Eugene Teo <eteo@redhat.com>
+# Copyright (C) 2009 Kai Meyer <kai@unixlords.com>
+#   Fixed a bug that allows this to run longer
+#   And added the humanreadable function
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+#
+
+#global reads, writes, total_io, first_seen, 
+global p_group_read, p_group_write, first_seen_g,  first_seen_gn, is_interesting
+#, now
+
+# function now:long () %{
+#   STAP_RETVALUE = (long)(curreint_kernel_time()).tv_sec;
+# %}
+
+#https://sourceware.org/systemtap/langref/Statistics_aggregates.html
+function logger(message) {
+
+	/* Log the message with logger */
+	command = sprintf("/usr/bin/logger -p local5.notice '%s'", message);
+	system(command);
+}
+
+function on_groupleader_exit() {
+  nowt = gettimeofday_s()
+  printf("tick\n")
+  g=pgrp()
+  n=first_seen_gn[g]
+  duration=(nowt - first_seen_g[g]  >0 ? nowt - first_seen_g[g]: 1)
+  
+#  if ( pid2task (g) == 0 )  {
+#      if ( dontshow[g,n] ==0 )
+#      { 
+#        dontshow[g, n] = 1
+        message = sprintf ("jobio_1_1:iosummary Process group %8d, (%10s) duration %d s, final stats was r: %15s w: %15s\n", 
+        g, n,  
+        nowt - first_seen_g[g],  
+        humanreadable(p_group_read[g], nowt - first_seen_g[g]  >0 ? nowt - first_seen_g[g]: 1 ),
+        humanreadable(p_group_write[g], nowt - first_seen_g[g] >0 ? nowt - first_seen_g[g]: 1 ))
+	/* Print the message to the output */
+	   printf("[%s]: %s", ctime(gettimeofday_s()), message);
+
+        if (is_interesting[g]) 
+        {
+               statscollector = sprintf("jobio_1_1:iosummary Group %8d (%10s) duration: %d s r: %20d B w: %20d B\n", g, n, duration, p_group_read[g], p_group_write[g]) 
+               logger(statscollector)
+        }
+#      }
+    
+ #  }
+#    else if ( dontshow[g, n] == 1) {
+#
+    #    
+    #    printf("Process reappeared %8d, %60s (was %60s)\n", g, n, first_seen_gn[g,n])
+    #}
+  delete p_group_read[g]
+  delete p_group_write[g]
+  delete first_seen_gn[g]
+  delete first_seen_g[g]
+  if (is_interesting[g])  delete  is_interesting[g]
+}
+    #PObviously this stops the reappearance detection, but the probe was overloading
+function store_process_info() {
+  gid=pgrp()
+  
+  #if ( namematch[gid, pid()] == 0 ) 
+  #{
+     gname = env_var("PBS_JOBID")
+     if ( 0 == strlen(gname) && 0 == strlen(first_seen_gn[gid])  ) 
+     { 
+        gname = cmdline_str()
+        first_seen_gn[gid] = gname
+     }
+     else
+     {
+        #Tis a PBS job
+        first_seen_gn[gid] = gname
+        is_interesting[gid] = 1
+     }
+#    printf("stored %d %d %s\n", gid,pid(), gname)
+    if ( 0 == strlen(first_seen_gn[gid]) )  {
+      first_seen_g[gid] = gettimeofday_s()
+
+      #just give it a half way sensible name for non pbs usage
+    }
+#  }
+}
+#probe timer.s(1)
+#{
+#  now= gettimeofday_s()
+#}
+
+probe vfs.read.return {
+
+
+  gid=pgrp()
+  if ($return > 0) {
+    p_group_read[gid] += $return
+  }
+}
+
+probe nd_syscall.execve {
+   #print_time()
+   printf("EXEC: (%4d) %s: file %s\n",
+          pid(), execname(), argstr)
+   store_process_info()
+
+}
+
+probe nd_syscall.fork.return {
+#   print_time()
+   printf("FORK: (%4d) %s: pid %s\n",
+          pid(), execname(), retstr)
+  store_process_info()
+  if ( strlen(first_seen_gn[pid()]) && pid() == pgrp() )
+     store_process_info()
+
+}
+
+probe nd_syscall.exit {
+#   print_time()
+   sig = status & 0x7F
+   code = sig ? sig : status >> 8
+   printf("EXIT: (%4d) %s: %s %d\n",
+          pid(), execname(),
+          sig ? "signal" : "exit code", code)
+   #parent process has exited (pid = gid).  I thnk one check is redundant, but safe?
+   if ( strlen(first_seen_gn[pid()]) && pid() == pgrp() )
+     on_groupleader_exit()
+}
+
+probe kernel.trace("module_load") {
+#   print_time()
+   printf("LOAD: (%4d) %s: module %s",
+          pid(), execname(),
+          kernel_string(@cast($mod, "struct module", "kernel<linux/module.h>")->name))
+   args = kernel_string(@cast($mod, "struct module", "kernel<linux/module.h>")->args)
+   if (args != "")
+      printf(" with args \"%s\"", args)
+   println("")
+#   store_process_info()i
+}
+
+probe nd_syscall.delete_module {
+#   print_time()
+   printf("UNLD: (%4d) %s: module %s with flags 0x%x\n",
+          pid(), execname(), name_user, flags);
+}
+
+
+probe vfs.write.return {
+  gid=pgrp()
+
+
+  if ($return > 0) {
+    p_group_write[gid] += $return
+  }
+}
+
+function humanreadable(bytes, timedelta) {
+  if (bytes > 1024*1024*1024) {
+    return sprintf("%d GiB (%d MiB/s)", bytes/1024/1024/1024, bytes/timedelta/1024/1024)
+  } else if (bytes > 1024*1024) {
+    return sprintf("%d MiB (%d KiB/s)", bytes/1024/1024, bytes/timedelta/1024)
+  } else if (bytes > 1024) {
+    return sprintf("%d KiB (%d B/s)", bytes/1024, bytes/timedelta)
+  } else {
+    return sprintf("%d   B (%d B/s)", bytes, bytes/timedelta)
+  }
+}
+
+
+
+#cleanup
+#probe timer.s(1)
+#{
+#    foreach([g,n] in dontshow limit 100 ) {
+#      delete p_group_read[g]
+#      delete p_group_write[g]
+#      delete first_seen_g[g]
+#    }
+#   
+#}  
+  # Note we don't zero out reads, writes and total_io, - now we do if process dies
+  # so the values are cumulative since the script started.
+
+

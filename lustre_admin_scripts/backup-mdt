@@ -1,0 +1,25 @@
+#!/bin/bash
+now=`date +%y%m%d`
+if [ `echo $now | wc -c` -ne 7 ]; then
+echo something wrong with data format
+exit 1
+fi
+lvcreate -L19G -s -n smdt${now} /dev/VGlustre/MDTatlas &
+
+sleep 10
+
+###MDT
+if [[ $tarmdt ]]; then
+  mkdir -p /back/MDT/
+
+  mount -t ldiskfs /dev/VGlustre/smdt${now} /back/MDT/
+  cd /back/MDT/
+
+  time tar --xattrs  --sparse -cf - . | ssh pplxbackup "cat >  /var/backups/lustre/atlas25/mdt/mdt25-${now}.tar"
+
+ cd /
+  umount /dev/VGlustre/smdt${now}
+fi
+time dd bs=64k if="/dev/VGlustre/smdt${now}" | ssh pplxbackup "dd of=/var/backups/lustre/atlas25/mdt/mdt25-${now}.img bs=64k"
+sleep 5
+lvremove -f /dev/VGlustre/smdt${now}

@@ -1,0 +1,40 @@
+#!/bin/bash
+#fixes up existing matlab processes and restricts them to 4 neighboring cores
+#assumes that cores are nicely aligned sequentially. have a look at nodes with numaclt
+#consider asking user to launch with numactl --cpunodelist=N app as that sets the application to run on cache local cpus.
+corespp=1
+processespergroup=1
+prog=MATLAB
+if [[ $1 ]]; then
+  prog=$1
+fi
+listofpids=/tmp/lop
+ps aux | grep "${prog}" |grep -v grep |  awk '{print $2}'  | tee $listofpids
+cpus=0
+processnum=0
+while read line ; do 
+  count=0; 
+
+  #echo next proc****
+  if [ $processnum = 0 ];then
+  cmd=$cpus ; 
+  while [ $count -lt $(( $corespp - 1)) ]; do 
+    count=$(( $count + 1 )) ; 
+    cpus=$(( $cpus + 1 )); 
+    cmd="${cmd},$cpus" ;
+  done;  
+  cpus=$(( $cpus + 1 ));
+  fi
+    processnum=$(( $processnum + 1 )) 
+
+  for i in $( cd /proc/${line}/task/ && ls ) ; do 
+      echo -e "taskset -p -c $cmd $i";
+      taskset -p -c $cmd $i; 
+  done;
+ 
+  if [ $processnum = $processespergroup ]; then
+    processnum=0
+    #echo $processespergroup ppg
+  fi
+done <$listofpids
+

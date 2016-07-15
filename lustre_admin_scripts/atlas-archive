@@ -1,0 +1,1 @@
+for i in users/* atlasdata/* atlasdata2/* atlasdata3/* ; do getent passwd `stat --printf=%u $i` | grep -q \! && echo $i ;done

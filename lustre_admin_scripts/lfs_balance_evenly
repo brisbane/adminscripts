@@ -1,0 +1,8 @@
+#!/bin/bash -x
+if [[ "$1" ]]; then
+#   find "${1}" -mtime +70 -type f -print| xargs -I{} -n1 lfs find "{}" -ost 51,52,61,71,81,91,101,111,221,222  | /home/brisbane/bin/lfs_migrate_goodosts -y
+#Retiring oss05 so leave old data on it
+   find "${1}" -mtime +5 -type f -print| xargs -I{} -n1 lfs find "{}" -ost 51,52,61,71,81,91,101,111,221,222   | /home/brisbane/bin/lfs_migrate_evenly -n -y 
+else
+   echo usage $0 dir
+fi

@@ -1,0 +1,21 @@
+#!/bin/bash
+echo this process id is $$
+PPRID=`ps -o ppid -p $$ | tail -1`
+echo my parent is $PPRID
+GRND=`ps -o ppid -p $PPRID `
+GRND=$(echo $GRND | awk '{print $NF}')
+echo grandparent is $GRND
+
+for i in `pgrep -u $USER` ;do
+if [ $i -ne $$ ] && [ $i -ne ${PPRID} ] && [ $i -ne ${GRND} ] ; then
+kill $i
+fi
+done
+sleep 5
+for i in `pgrep -u $USER` ;do
+if [ $i -ne $$ ] && [ $i -ne ${PPRID} ] && [ $i -ne ${GRND} ] ; then
+kill -9 $i
+fi
+
+
+done
