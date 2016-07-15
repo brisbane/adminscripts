@@ -1,0 +1,22 @@
+#!/bin/bash
+TESTNAME=lhcb_lustre
+[[ $1 ]] &&  TESTNAME=$1
+dorm=0
+if [[ ${PBS_JOBID} ]]; then
+SCRATCHFN=/data/lhcb/brisbane/${PBS_JOBID}
+else
+  SCRATCHFN=/data/lhcb/brisbane/$(hostname)
+fi
+
+echo "scratch_contents" > $SCRATCHFN
+echo "TEST: $TESTNAME - result: "
+FAIL=0
+[ `cat $SCRATCHFN` == "scratch_contents" ] && FAIL=0  || FAIL=1
+rm -f ${SCRATCHFN}
+
+if [ $FAIL -eq 1 ] ;then
+    echo FAIL
+else
+    echo OK
+fi
+exit $FAIL

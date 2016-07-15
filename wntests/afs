@@ -1,0 +1,16 @@
+#!/bin/bash
+
+TESTNAME=afs
+[[ $1 ]] &&  TESTNAME=$1
+
+x=`ls /afs/cern.ch/ | grep atlas`
+res=$?
+echo "TEST: $TESTNAME - result: "
+
+if [ $res -eq 0 ];then  
+echo OK 
+else
+echo FAIL 
+fi
+exit $res
+

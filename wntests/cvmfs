@@ -1,0 +1,16 @@
+#!/bin/bash
+
+TESTNAME=cvmfs
+[[ $1 ]] &&  TESTNAME=$1
+
+x=`ls /cvmfs/lhcb.cern.ch/ | grep etc`
+res=$?
+echo "TEST: $TESTNAME - result: "
+
+if [ $res -eq 0 ];then  
+    echo OK 
+else
+    echo FAIL 
+fi
+exit $res
+

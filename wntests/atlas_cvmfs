@@ -1,0 +1,10 @@
+#!/bin/bash
+FAIL=0
+ls /cvmfs/atlas.cern.ch | grep repo > /dev/null 2>&1 || FAIL=1
+if [ $FAIL -eq 1 ]; then
+    echo FAIL
+else
+    echo OK
+fi
+
+exit $FAIL

@@ -1,0 +1,20 @@
+#!/bin/bash
+
+TESTNAME=scratch_ok
+[[ $1 ]] &&  TESTNAME=$1
+echo $TMPDIR  | grep scratch || TMPDIR=/scratch
+
+SCRATCHFN=$TMPDIR/sfn
+echo scratch_contents > $SCRATCHFN
+echo "TEST: $TESTNAME - result: "
+
+if  [ `cat $SCRATCHFN` == "scratch_contents" ]; then
+   FAIL=0
+   echo OK 
+else
+   FAIL=1
+   echo FAIL
+fi
+rm -f $SCRATCHFN
+exit $FAIL
+

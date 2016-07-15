@@ -1,0 +1,14 @@
+#!/bin/bash
+
+TESTNAME=home_mounts
+[[ $1 ]] &&  TESTNAME=$1
+FAIL=0
+
+echo "TEST: $TESTNAME - result: "
+mount | grep home > /dev/null 
+[ $? -eq 0 ] && ( echo OK ) || ( echo FAIL on mount && exit 1)
+touch $HOME/${PBS_JOBID} || ( echo FAIL on write && exit 1) 
+/bin/rm $HOME/${PBS_JOBID}  || ( echo FAIL on rm && exit 1)
+exit 0
+
+

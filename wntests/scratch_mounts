@@ -1,0 +1,11 @@
+#!/bin/bash
+
+TESTNAME=scratch_mounts
+[[ $1 ]] &&  TESTNAME=$1
+
+
+echo "TEST: $TESTNAME - result: "
+mount | grep " /scratch" > /dev/null 
+FAIL=$?
+[ $FAIL -eq 0 ] && echo OK || echo FAIL
+exit $FAIL

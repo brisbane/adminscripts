@@ -1,0 +1,9 @@
+count=0
+TESTNAME=create_big_output
+[[ $1 ]] &&  TESTNAME=$1
+echo "TEST: $TESTNAME - result: "
+
+while [ $count -lt 100 ]; do 
+echo "This is a line of output.  It will get very long"
+done
+exit 0

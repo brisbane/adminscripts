@@ -1,0 +1,18 @@
+#!/bin/bash
+ulimit -Ha
+ulimit -Sa
+#ulimit -Sv 6000000
+#ulimit -Sm 6000000
+#ulimit -Ss 6000000
+#ulimit -Sl 
+
+#echo new limits set
+#ulimit -Ha 
+#ulimit -Sa
+if ! [[ $1 ]]; then
+   aloc=4000000
+else
+   aloc=$1
+fi 
+/home/brisbane/wntest_cpp/allocate_memkb $aloc
+exit $?

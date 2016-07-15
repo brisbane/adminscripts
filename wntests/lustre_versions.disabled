@@ -1,0 +1,22 @@
+#!/bin/bash
+TESTNAME=$0
+[[ $1 ]] &&  TESTNAME=$1
+SCRATCHFN=/tmp/test
+if [[ $PBS_JOBID ]]; then
+SCRATCHFN=/data/atlas/brisbane/${PBS_JOBID}
+fi 
+
+#eg : 2.6.18_274.17.1.el5
+rpm=`rpm -qa | grep lustre-client-modules | awk -F"-" '{print $5_$6}'  | sed 's/_/-/g'`
+kernel=`uname -r`
+
+
+echo "TEST: $TESTNAME - result: "
+FAIL=1
+echo  ${rpm/_/-}  | grep $kernel && FAIL=0
+if [ $FAIL -eq 1 ] ;then
+    echo FAIL "rpm= $rpm  : kernel= $kernel"
+else
+    echo OK
+fi
+exit $FAIL
